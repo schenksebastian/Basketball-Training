@@ -436,6 +436,123 @@
     }
 
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Calendar ── */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .cal-nav-btn {
+      width: 36px;
+      height: 36px;
+      background: var(--surface2);
+      border: none;
+      color: var(--text);
+      border-radius: 50%;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cal-month-label { font-size: 17px; font-weight: 700; }
+
+    .cal-chips { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      margin-bottom: 16px;
+    }
+
+    .cal-dow {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 6px 0 8px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      gap: 2px;
+      position: relative;
+    }
+
+    .cal-day:active { opacity: .7; }
+
+    .cal-today { background: rgba(249,115,22,.12); }
+    .cal-today span { color: var(--orange); font-weight: 800; }
+
+    .cal-planned { background: rgba(249,115,22,.08); }
+    .cal-done    { background: rgba(34,197,94,.08); }
+    .cal-running { background: rgba(249,115,22,.12); outline: 2px dashed var(--orange); outline-offset: -2px; }
+
+    .cal-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+    .cal-dot.orange { background: var(--orange); }
+    .cal-dot.green  { background: var(--green); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+    .cal-dot.pulse { animation: pulse 1.4s ease-in-out infinite; }
+
+    .cal-legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .cal-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Day detail modal scrollable body */
+    .sheet-scroll {
+      overflow-y: auto;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -20px;
+      padding: 0 20px;
+    }
+
+    .day-player-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .day-player-row:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -462,6 +579,11 @@
   <!-- Stats Tab -->
   <div class="view" id="view-stats">
     <div id="stats-content"></div>
+  </div>
+
+  <!-- Kalender Tab -->
+  <div class="view" id="view-kalender">
+    <div id="kalender-content"></div>
   </div>
 
 </main>
@@ -493,6 +615,18 @@
       <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
     Statistik
+  </button>
+  <button class="nav-btn" data-view="kalender" onclick="switchView('kalender')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+      <line x1="8" y1="14" x2="8" y2="14" stroke-width="3"/>
+      <line x1="12" y1="14" x2="12" y2="14" stroke-width="3"/>
+      <line x1="16" y1="14" x2="16" y2="14" stroke-width="3"/>
+    </svg>
+    Kalender
   </button>
 </nav>
 
@@ -532,6 +666,17 @@
   </div>
 </div>
 
+<!-- Modal: Tag-Detail -->
+<div class="overlay" id="modal-day" onclick="overlayClose(event,'modal-day')">
+  <div class="sheet" style="max-height:80dvh;display:flex;flex-direction:column;">
+    <div class="sheet-handle"></div>
+    <h2 id="day-modal-title" style="flex-shrink:0;margin-bottom:6px;"></h2>
+    <div id="day-modal-sub" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;flex-shrink:0;"></div>
+    <div class="sheet-scroll" id="day-modal-body"></div>
+    <div style="flex-shrink:0;padding-top:8px;" id="day-modal-actions"></div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -544,6 +689,8 @@ const DB = {
   set sessions(v)     { localStorage.setItem('bt_sessions', JSON.stringify(v)); },
   get active()        { return JSON.parse(localStorage.getItem('bt_active') || 'null'); },
   set active(v)       { localStorage.setItem('bt_active', JSON.stringify(v)); },
+  get planned()       { return JSON.parse(localStorage.getItem('bt_planned') || '[]'); },
+  set planned(v)      { localStorage.setItem('bt_planned', JSON.stringify(v)); },
 };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -558,9 +705,9 @@ function switchView(view) {
   document.getElementById('view-' + view).classList.add('active');
   document.querySelector(`[data-view="${view}"]`).classList.add('active');
   render(view);
-  const titles   = { training: '🏀 Training', players: '👥 Spieler', stats: '📊 Statistik' };
-  const showBtn  = { training: true, players: true, stats: false };
-  const btnLabel = { training: '+ Neu', players: '+ Spieler', stats: '' };
+  const titles   = { training: '🏀 Training', players: '👥 Spieler', stats: '📊 Statistik', kalender: '📅 Kalender' };
+  const showBtn  = { training: true, players: true, stats: false, kalender: true };
+  const btnLabel = { training: '+ Neu', players: '+ Spieler', stats: '', kalender: 'Heute' };
   document.getElementById('header-title').textContent = titles[view];
   const btn = document.getElementById('header-btn');
   btn.style.display = showBtn[view] ? '' : 'none';
@@ -570,6 +717,7 @@ function switchView(view) {
 document.getElementById('header-btn').onclick = () => {
   if (currentView === 'training') openSessionModal();
   else if (currentView === 'players') openPlayerModal();
+  else if (currentView === 'kalender') calGoToday();
 };
 
 // ── Render dispatcher ─────────────────────────────────────
@@ -577,6 +725,7 @@ function render(view) {
   if (view === 'training') renderTraining();
   else if (view === 'players') renderPlayers();
   else if (view === 'stats') renderStats();
+  else if (view === 'kalender') renderKalender();
 }
 
 // ── Training view ─────────────────────────────────────────
@@ -804,9 +953,16 @@ function openSessionModal() {
 function createSession() {
   const date = document.getElementById('inp-date').value;
   if (!date) { toast('Bitte Datum wählen'); return; }
+  removeFromPlanned(date);
   DB.active = { id: uid(), date, present: [] };
   closeModal('modal-session');
   renderTraining();
+}
+
+function removeFromPlanned(dateStr) {
+  const planned = DB.planned;
+  const i = planned.indexOf(dateStr);
+  if (i >= 0) { planned.splice(i, 1); DB.planned = planned; }
 }
 
 function toggleAttend(playerId) {
@@ -868,6 +1024,198 @@ const trashIcon  = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="
 const calIcon    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
 const peopleIcon = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 const barIcon    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
+
+// ── Calendar ─────────────────────────────────────────────
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderKalender() {
+  const el = document.getElementById('kalender-content');
+  const planned  = DB.planned;
+  const sessions = DB.sessions;
+  const active   = DB.active;
+  const todayStr = todayISO();
+
+  const first       = new Date(calYear, calMonth, 1);
+  const last        = new Date(calYear, calMonth + 1, 0);
+  const daysInMonth = last.getDate();
+
+  // German week: Monday = 0
+  let startDow = (first.getDay() + 6) % 7;
+
+  const monthLabel = first.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const monthPfx   = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+
+  const doneDays    = sessions.filter(s => s.date.startsWith(monthPfx)).length;
+  const plannedDays = planned.filter(d => d.startsWith(monthPfx)).length;
+  const isCurrentMonth = calYear === new Date().getFullYear() && calMonth === new Date().getMonth();
+
+  let html = `
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+      <div class="cal-month-label">${monthLabel}</div>
+      <button class="cal-nav-btn" onclick="calNext()">›</button>
+    </div>`;
+
+  if (doneDays > 0 || plannedDays > 0) {
+    html += `<div class="cal-chips" style="margin-top:12px;">`;
+    if (doneDays > 0)    html += `<div class="badge green">${doneDays} abgeschlossen</div>`;
+    if (plannedDays > 0) html += `<div class="badge">${plannedDays} geplant</div>`;
+    html += `</div>`;
+  } else {
+    html += `<div style="height:12px;"></div>`;
+  }
+
+  // Weekday headers
+  html += `<div class="cal-grid">`;
+  ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach(d => {
+    html += `<div class="cal-dow">${d}</div>`;
+  });
+
+  // Empty lead cells
+  for (let i = 0; i < startDow; i++) html += `<div></div>`;
+
+  // Day cells
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr   = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday   = dateStr === todayStr;
+    const hasSession = sessions.some(s => s.date === dateStr);
+    const isRunning  = active && active.date === dateStr;
+    const isPlanned  = planned.includes(dateStr);
+
+    let cls = 'cal-day';
+    if (isToday)    cls += ' cal-today';
+    if (hasSession) cls += ' cal-done';
+    else if (isRunning) cls += ' cal-running';
+    else if (isPlanned) cls += ' cal-planned';
+
+    let dot = '';
+    if (hasSession)     dot = `<div class="cal-dot green"></div>`;
+    else if (isRunning) dot = `<div class="cal-dot orange pulse"></div>`;
+    else if (isPlanned) dot = `<div class="cal-dot orange"></div>`;
+
+    html += `<div class="${cls}" onclick="calDayTap('${dateStr}')"><span>${day}</span>${dot}</div>`;
+  }
+
+  html += `</div>`;
+
+  // Hint
+  html += `<p style="font-size:12px;color:var(--text-muted);text-align:center;margin-bottom:14px;">Tippe auf einen Tag, um ein Training zu planen.</p>`;
+
+  // Legend
+  html += `
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="cal-dot green" style="flex-shrink:0;"></div> Abgeschlossen</div>
+      <div class="cal-legend-item"><div class="cal-dot orange" style="flex-shrink:0;"></div> Geplant</div>
+      <div class="cal-legend-item">
+        <div style="width:5px;height:5px;border-radius:50%;background:var(--orange);animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;"></div>
+        Läuft
+      </div>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+function calPrev() {
+  if (--calMonth < 0) { calMonth = 11; calYear--; }
+  renderKalender();
+}
+
+function calNext() {
+  if (++calMonth > 11) { calMonth = 0; calYear++; }
+  renderKalender();
+}
+
+function calGoToday() {
+  calYear  = new Date().getFullYear();
+  calMonth = new Date().getMonth();
+  renderKalender();
+}
+
+function calDayTap(dateStr) {
+  const hasSession = DB.sessions.some(s => s.date === dateStr);
+  const isRunning  = DB.active && DB.active.date === dateStr;
+  const isPlanned  = DB.planned.includes(dateStr);
+
+  if (hasSession || isRunning || isPlanned) {
+    showDayModal(dateStr);
+  } else {
+    const planned = DB.planned;
+    planned.push(dateStr);
+    DB.planned = planned;
+    renderKalender();
+    toast('Training geplant');
+  }
+}
+
+function showDayModal(dateStr) {
+  const players  = DB.players;
+  const session  = DB.sessions.find(s => s.date === dateStr);
+  const isRunning = DB.active && DB.active.date === dateStr;
+  const isPlanned = DB.planned.includes(dateStr);
+
+  document.getElementById('day-modal-title').textContent = formatDate(dateStr);
+
+  const sub     = document.getElementById('day-modal-sub');
+  const body    = document.getElementById('day-modal-body');
+  const actions = document.getElementById('day-modal-actions');
+
+  if (session) {
+    const present = session.present.length;
+    sub.textContent = `${present} von ${players.length} Spielern anwesend`;
+    const rows = players.map(p => {
+      const was = session.present.includes(p.id);
+      return `
+        <div class="day-player-row">
+          <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${was ? 'var(--green)' : 'var(--surface2)'};flex-shrink:0;">
+            ${was
+              ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+              : `<span style="color:var(--text-muted);font-size:11px;font-weight:700;">✗</span>`}
+          </div>
+          <div class="avatar sm">${initials(p.name)}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;${!was ? 'color:var(--text-muted);' : ''}">${p.name}</div>
+            ${p.number ? `<div style="font-size:11px;color:var(--text-muted);">#${p.number}${p.position ? ' · ' + p.position : ''}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+    body.innerHTML = rows;
+    actions.innerHTML = `<button class="btn-ghost" onclick="closeModal('modal-day')">Schließen</button>`;
+
+  } else if (isRunning) {
+    sub.textContent = 'Training läuft gerade.';
+    body.innerHTML  = '';
+    actions.innerHTML = `
+      <button class="btn-primary" onclick="closeModal('modal-day');switchView('training');">Zum laufenden Training</button>
+      <button class="btn-ghost" onclick="closeModal('modal-day')">Abbrechen</button>`;
+
+  } else if (isPlanned) {
+    sub.textContent = 'Training geplant';
+    body.innerHTML  = '';
+    actions.innerHTML = `
+      <button class="btn-primary" onclick="startFromCalendar('${dateStr}')">Training starten</button>
+      <button class="btn-ghost" style="color:var(--red);" onclick="removePlannedDay('${dateStr}')">Vom Plan entfernen</button>
+      <button class="btn-ghost" onclick="closeModal('modal-day')">Abbrechen</button>`;
+  }
+
+  openModal('modal-day');
+}
+
+function startFromCalendar(dateStr) {
+  if (DB.active)           { closeModal('modal-day'); toast('Erst aktuelles Training abschließen'); return; }
+  if (!DB.players.length)  { closeModal('modal-day'); toast('Zuerst Spieler hinzufügen'); switchView('players'); return; }
+  removeFromPlanned(dateStr);
+  DB.active = { id: uid(), date: dateStr, present: [] };
+  closeModal('modal-day');
+  switchView('training');
+}
+
+function removePlannedDay(dateStr) {
+  removeFromPlanned(dateStr);
+  closeModal('modal-day');
+  renderKalender();
+  toast('Training entfernt');
+}
 
 // ── Service Worker ────────────────────────────────────────
 if ('serviceWorker' in navigator) {
