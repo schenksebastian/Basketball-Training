@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Basketball">
+  <meta name="theme-color" content="#0F0F0F">
+  <title>Basketball Training</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --orange: #F97316;
+      --orange-dark: #EA580C;
+      --bg: #0F0F0F;
+      --surface: #1A1A1A;
+      --surface2: #252525;
+      --border: #2E2E2E;
+      --text: #F5F5F5;
+      --text-muted: #888;
+      --green: #22C55E;
+      --red: #EF4444;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      padding: 12px 16px;
+      padding-top: calc(12px + var(--safe-top));
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .header h1 { font-size: 20px; font-weight: 700; }
+
+    .header-btn {
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── Scrollable content ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px;
+    }
+
+    /* ── Bottom nav ── */
+    .nav {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: var(--safe-bottom);
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 10px 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .nav-btn.active { color: var(--orange); }
+
+    .nav-btn svg { width: 22px; height: 22px; }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Section label ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Player list item ── */
+    .player-item {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--orange);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .avatar.sm { width: 36px; height: 36px; font-size: 13px; }
+
+    .player-info { flex: 1; min-width: 0; }
+    .player-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .player-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .btn-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .btn-danger { background: rgba(239,68,68,.15); color: var(--red); }
+
+    /* ── Attendance toggle ── */
+    .attend-item {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      user-select: none;
+    }
+
+    .attend-item.present {
+      border-color: var(--green);
+      background: rgba(34,197,94,.07);
+    }
+
+    .check-circle {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+
+    .attend-item.present .check-circle {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    /* ── Progress bar ── */
+    .bar-bg {
+      background: var(--surface2);
+      border-radius: 4px;
+      height: 7px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--orange);
+      transition: width .4s ease;
+    }
+
+    /* ── Session item ── */
+    .session-item {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .session-date { font-weight: 600; font-size: 15px; }
+
+    .badge {
+      background: rgba(249,115,22,.15);
+      color: var(--orange);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge.green { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge.red   { background: rgba(239,68,68,.15);  color: var(--red); }
+
+    /* ── Stat item ── */
+    .stat-item {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .stat-row { display: flex; justify-content: space-between; align-items: center; }
+    .stat-pct { font-weight: 700; font-size: 16px; }
+
+    /* ── Summary grid ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .summary-num { font-size: 30px; font-weight: 800; color: var(--orange); }
+    .summary-label { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── Active training banner ── */
+    .training-banner {
+      border: 1px solid var(--orange);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .training-banner .big-num { font-size: 26px; font-weight: 800; color: var(--orange); }
+
+    .btn-finish {
+      width: 100%;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--text-muted);
+    }
+
+    .empty svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: .35; }
+    .empty h3 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty p { font-size: 14px; line-height: 1.5; }
+
+    /* ── Modal sheet ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      display: flex;
+      align-items: flex-end;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .overlay.open { opacity: 1; pointer-events: all; }
+
+    .sheet {
+      background: var(--surface);
+      border-radius: 20px 20px 0 0;
+      padding: 24px 20px;
+      padding-bottom: calc(24px + var(--safe-bottom));
+      width: 100%;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,.72,0,1);
+    }
+
+    .overlay.open .sheet { transform: translateY(0); }
+
+    .sheet h2 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 14px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"], input[type="number"], input[type="date"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 14px;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input:focus { border-color: var(--orange); }
+    input[type="date"] { color-scheme: dark; }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .btn-ghost {
+      width: 100%;
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-radius: 12px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: calc(72px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+      white-space: nowrap;
+      border: 1px solid var(--border);
+      z-index: 300;
+      max-width: calc(100vw - 40px);
+      text-align: center;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <h1 id="header-title">🏀 Training</h1>
+  <button class="header-btn" id="header-btn">+ Neu</button>
+</header>
+
+<!-- Content -->
+<main class="main" id="main">
+
+  <!-- Training Tab -->
+  <div class="view active" id="view-training">
+    <div id="training-content"></div>
+  </div>
+
+  <!-- Players Tab -->
+  <div class="view" id="view-players">
+    <div id="players-content"></div>
+  </div>
+
+  <!-- Stats Tab -->
+  <div class="view" id="view-stats">
+    <div id="stats-content"></div>
+  </div>
+
+</main>
+
+<!-- Bottom Nav -->
+<nav class="nav">
+  <button class="nav-btn active" data-view="training" onclick="switchView('training')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    Training
+  </button>
+  <button class="nav-btn" data-view="players" onclick="switchView('players')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    Spieler
+  </button>
+  <button class="nav-btn" data-view="stats" onclick="switchView('stats')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    Statistik
+  </button>
+</nav>
+
+<!-- Modal: Neues Training -->
+<div class="overlay" id="modal-session" onclick="overlayClose(event,'modal-session')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2>Training erfassen</h2>
+    <div class="form-group">
+      <label>Datum</label>
+      <input type="date" id="inp-date">
+    </div>
+    <button class="btn-primary" onclick="createSession()">Training starten</button>
+    <button class="btn-ghost" onclick="closeModal('modal-session')">Abbrechen</button>
+  </div>
+</div>
+
+<!-- Modal: Spieler -->
+<div class="overlay" id="modal-player" onclick="overlayClose(event,'modal-player')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2 id="modal-player-title">Spieler hinzufügen</h2>
+    <div class="form-group">
+      <label>Name *</label>
+      <input type="text" id="inp-name" placeholder="z. B. Max Mustermann" autocomplete="off" autocorrect="off">
+    </div>
+    <div class="form-group">
+      <label>Trikot-Nr.</label>
+      <input type="number" id="inp-number" placeholder="z. B. 7" min="0" max="99">
+    </div>
+    <div class="form-group">
+      <label>Position</label>
+      <input type="text" id="inp-position" placeholder="z. B. Point Guard" autocomplete="off">
+    </div>
+    <button class="btn-primary" onclick="savePlayer()">Speichern</button>
+    <button class="btn-ghost" onclick="closeModal('modal-player')">Abbrechen</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Storage ──────────────────────────────────────────────
+const DB = {
+  get players()       { return JSON.parse(localStorage.getItem('bt_players') || '[]'); },
+  set players(v)      { localStorage.setItem('bt_players', JSON.stringify(v)); },
+  get sessions()      { return JSON.parse(localStorage.getItem('bt_sessions') || '[]'); },
+  set sessions(v)     { localStorage.setItem('bt_sessions', JSON.stringify(v)); },
+  get active()        { return JSON.parse(localStorage.getItem('bt_active') || 'null'); },
+  set active(v)       { localStorage.setItem('bt_active', JSON.stringify(v)); },
+};
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+// ── Navigation ───────────────────────────────────────────
+let currentView = 'training';
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelector(`[data-view="${view}"]`).classList.add('active');
+  render(view);
+  const titles   = { training: '🏀 Training', players: '👥 Spieler', stats: '📊 Statistik' };
+  const showBtn  = { training: true, players: true, stats: false };
+  const btnLabel = { training: '+ Neu', players: '+ Spieler', stats: '' };
+  document.getElementById('header-title').textContent = titles[view];
+  const btn = document.getElementById('header-btn');
+  btn.style.display = showBtn[view] ? '' : 'none';
+  btn.textContent = btnLabel[view];
+}
+
+document.getElementById('header-btn').onclick = () => {
+  if (currentView === 'training') openSessionModal();
+  else if (currentView === 'players') openPlayerModal();
+};
+
+// ── Render dispatcher ─────────────────────────────────────
+function render(view) {
+  if (view === 'training') renderTraining();
+  else if (view === 'players') renderPlayers();
+  else if (view === 'stats') renderStats();
+}
+
+// ── Training view ─────────────────────────────────────────
+function renderTraining() {
+  const el = document.getElementById('training-content');
+  const active = DB.active;
+  const sessions = DB.sessions;
+  const players = DB.players;
+  let html = '';
+
+  if (active) {
+    const presentCount = active.present.length;
+    html += `
+      <div class="training-banner">
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);">Laufendes Training</div>
+          <div style="font-size:17px;font-weight:700;margin-top:3px;">${formatDate(active.date)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="big-num">${presentCount}<span style="font-size:16px;color:var(--text-muted);">/${players.length}</span></div>
+          <div style="font-size:11px;color:var(--text-muted);">Anwesend</div>
+        </div>
+      </div>
+      <button class="btn-finish" onclick="finishSession()">✓ Training abschließen</button>
+    `;
+
+    if (players.length === 0) {
+      html += `<div style="text-align:center;padding:32px 0;color:var(--text-muted);">Keine Spieler im Kader.</div>`;
+    } else {
+      html += `<div class="section-title" style="margin-top:20px;">Anwesenheit markieren</div>`;
+      players.forEach(p => {
+        const isPresent = active.present.includes(p.id);
+        html += `
+          <div class="attend-item ${isPresent ? 'present' : ''}" onclick="toggleAttend('${p.id}')">
+            <div class="check-circle">
+              ${isPresent ? checkIcon() : ''}
+            </div>
+            <div class="avatar" style="width:38px;height:38px;font-size:13px;">${initials(p.name)}</div>
+            <div class="player-info">
+              <div class="player-name">${p.name}</div>
+              <div class="player-meta">${p.number ? '#' + p.number : ''}${p.number && p.position ? ' · ' : ''}${p.position || ''}</div>
+            </div>
+          </div>`;
+      });
+    }
+  } else {
+    if (sessions.length === 0) {
+      html = `
+        <div class="empty">
+          ${calIcon()}
+          <h3>Kein Training erfasst</h3>
+          <p>Tippe auf „+ Neu" um ein neues Training zu starten und die Anwesenheit zu erfassen.</p>
+        </div>`;
+    } else {
+      const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+      html += `<div class="section-title">${sorted.length} Trainings gesamt</div>`;
+      sorted.forEach(s => {
+        const pct = players.length ? Math.round(s.present.length / players.length * 100) : 0;
+        const bClass = pct >= 75 ? 'green' : pct >= 50 ? '' : 'red';
+        html += `
+          <div class="session-item">
+            <div class="session-header">
+              <div class="session-date">${formatDate(s.date)}</div>
+              <div class="badge ${bClass}">${s.present.length}${players.length ? '/' + players.length : ''} dabei</div>
+            </div>
+            ${players.length ? `<div class="bar-bg"><div class="bar-fill" style="width:${pct}%;"></div></div>` : ''}
+          </div>`;
+      });
+    }
+  }
+
+  el.innerHTML = html;
+}
+
+// ── Players view ──────────────────────────────────────────
+function renderPlayers() {
+  const el = document.getElementById('players-content');
+  const players = DB.players;
+
+  if (players.length === 0) {
+    el.innerHTML = `
+      <div class="empty">
+        ${peopleIcon()}
+        <h3>Keine Spieler</h3>
+        <p>Tippe auf „+ Spieler" um deinen Kader anzulegen.</p>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="section-title">${players.length} Spieler im Kader</div>`;
+  players.forEach(p => {
+    html += `
+      <div class="player-item">
+        <div class="avatar">${initials(p.name)}</div>
+        <div class="player-info">
+          <div class="player-name">${p.name}</div>
+          <div class="player-meta">${p.number ? '#' + p.number : '–'}${p.position ? ' · ' + p.position : ''}</div>
+        </div>
+        <button class="btn-icon btn-danger" onclick="deletePlayer('${p.id}')">
+          ${trashIcon()}
+        </button>
+      </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// ── Stats view ────────────────────────────────────────────
+function renderStats() {
+  const el = document.getElementById('stats-content');
+  const players = DB.players;
+  const sessions = DB.sessions;
+
+  if (sessions.length === 0 || players.length === 0) {
+    el.innerHTML = `
+      <div class="empty">
+        ${barIcon()}
+        <h3>Noch keine Daten</h3>
+        <p>Erfasse mindestens ein Training mit Spielern, um Statistiken zu sehen.</p>
+      </div>`;
+    return;
+  }
+
+  const total = sessions.length;
+  const avgRaw = sessions.reduce((a, s) => a + s.present.length, 0) / total;
+  const avgPct = Math.round(avgRaw / players.length * 100);
+
+  let html = `
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-num">${total}</div>
+        <div class="summary-label">Trainings</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-num">${avgPct}%</div>
+        <div class="summary-label">Ø Anwesenheit</div>
+      </div>
+    </div>
+    <div class="section-title">Anwesenheit je Spieler</div>`;
+
+  const pStats = players
+    .map(p => {
+      const count = sessions.filter(s => s.present.includes(p.id)).length;
+      return { ...p, count, pct: Math.round(count / total * 100) };
+    })
+    .sort((a, b) => b.pct - a.pct);
+
+  pStats.forEach(p => {
+    const color = p.pct >= 75 ? 'var(--green)' : p.pct >= 50 ? 'var(--orange)' : 'var(--red)';
+    html += `
+      <div class="stat-item">
+        <div class="stat-row">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="avatar sm">${initials(p.name)}</div>
+            <div>
+              <div style="font-weight:600;font-size:15px;">${p.name}</div>
+              <div style="font-size:12px;color:var(--text-muted);">${p.count} von ${total} Trainings</div>
+            </div>
+          </div>
+          <div class="stat-pct" style="color:${color};">${p.pct}%</div>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill" style="width:${p.pct}%;background:${color};"></div>
+        </div>
+      </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// ── Player CRUD ───────────────────────────────────────────
+let editingId = null;
+
+function openPlayerModal(id = null) {
+  editingId = id;
+  document.getElementById('modal-player-title').textContent = id ? 'Spieler bearbeiten' : 'Spieler hinzufügen';
+  if (id) {
+    const p = DB.players.find(p => p.id === id);
+    document.getElementById('inp-name').value = p.name;
+    document.getElementById('inp-number').value = p.number || '';
+    document.getElementById('inp-position').value = p.position || '';
+  } else {
+    document.getElementById('inp-name').value = '';
+    document.getElementById('inp-number').value = '';
+    document.getElementById('inp-position').value = '';
+  }
+  openModal('modal-player');
+  setTimeout(() => document.getElementById('inp-name').focus(), 350);
+}
+
+function savePlayer() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { toast('Bitte Namen eingeben'); return; }
+  const number = document.getElementById('inp-number').value.trim();
+  const position = document.getElementById('inp-position').value.trim();
+  const players = DB.players;
+
+  if (editingId) {
+    const i = players.findIndex(p => p.id === editingId);
+    players[i] = { ...players[i], name, number, position };
+  } else {
+    players.push({ id: uid(), name, number, position });
+  }
+  DB.players = players;
+  closeModal('modal-player');
+  renderPlayers();
+  toast(editingId ? 'Spieler aktualisiert' : `${name} hinzugefügt`);
+}
+
+function deletePlayer(id) {
+  if (!confirm('Spieler wirklich löschen?')) return;
+  DB.players = DB.players.filter(p => p.id !== id);
+  renderPlayers();
+  toast('Spieler entfernt');
+}
+
+// ── Session management ────────────────────────────────────
+function openSessionModal() {
+  if (DB.active) { toast('Erst aktuelles Training abschließen'); return; }
+  if (DB.players.length === 0) { toast('Zuerst Spieler hinzufügen'); switchView('players'); return; }
+  document.getElementById('inp-date').value = todayISO();
+  openModal('modal-session');
+}
+
+function createSession() {
+  const date = document.getElementById('inp-date').value;
+  if (!date) { toast('Bitte Datum wählen'); return; }
+  DB.active = { id: uid(), date, present: [] };
+  closeModal('modal-session');
+  renderTraining();
+}
+
+function toggleAttend(playerId) {
+  const s = DB.active;
+  if (!s) return;
+  const i = s.present.indexOf(playerId);
+  if (i >= 0) s.present.splice(i, 1);
+  else s.present.push(playerId);
+  DB.active = s;
+  renderTraining();
+}
+
+function finishSession() {
+  const s = DB.active;
+  if (!s) return;
+  const sessions = DB.sessions;
+  sessions.push(s);
+  DB.sessions = sessions;
+  DB.active = null;
+  toast(`Training gespeichert – ${s.present.length} Spieler anwesend`);
+  renderTraining();
+}
+
+// ── Modal helpers ─────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function overlayClose(e, id) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+
+// ── Utility ───────────────────────────────────────────────
+function initials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function todayISO() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function formatDate(str) {
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── SVG helpers ───────────────────────────────────────────
+const checkIcon  = () => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const trashIcon  = () => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+const calIcon    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const peopleIcon = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+const barIcon    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
+
+// ── Service Worker ────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+
+// ── Init ──────────────────────────────────────────────────
+renderTraining();
+</script>
+</body>
+</html>
